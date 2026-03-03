@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Playful Office Building Lights</title>
+  <style>
+    :root {
+      --bg1: #090b1a;
+      --bg2: #1f2856;
+      --panel: rgba(14, 18, 44, 0.86);
+      --line: rgba(255, 255, 255, 0.18);
+      --text: #f3f7ff;
+      --accent: #8ec6ff;
+      --button: #3246aa;
+      --button2: #a53ac6;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: "Trebuchet MS", "Comic Sans MS", ui-rounded, system-ui, sans-serif;
+      color: var(--text);
+      background: radial-gradient(circle at 18% 25%, #213583 0%, #141a3a 35%, #090b1a 100%);
+    }
+
+    #app { position: fixed; inset: 0; }
+
+    .panel {
+      position: fixed;
+      width: min(330px, 88vw);
+      max-height: 78vh;
+      overflow: auto;
+      padding: 12px;
+      border-radius: 14px;
+      border: 2px solid var(--line);
+      background: var(--panel);
+      backdrop-filter: blur(7px);
+      box-shadow: 0 14px 24px rgba(0, 0, 0, 0.35);
+      transition: transform 0.25s ease;
+      z-index: 6;
+    }
+
+    #settingsPanel { top: 16px; left: 16px; }
+    #controlsPanel { top: 16px; right: 16px; }
+
+    .panel.closed {
+      transform: translateY(-115%);
+      pointer-events: none;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 10px;
+      font-size: 0.92rem;
+    }
+
+    .row input[type="range"] { width: 120px; }
+    .row input[type="number"] { width: 70px; }
+
+    button {
+      width: 100%;
+      border: none;
+      border-radius: 10px;
+      padding: 9px 10px;
+      font-weight: 700;
+      color: #eef4ff;
+      cursor: pointer;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, var(--button), var(--button2));
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.28);
+    }
+
+    button:hover { filter: brightness(1.1); }
+
+    .tiny {
+      font-size: 0.82rem;
+      opacity: 0.85;
+      margin: 0 0 8px;
+    }
+
+    .toggleBtn {
+      position: fixed;
+      z-index: 7;
+      width: auto;
+      padding: 10px 12px;
+      font-size: 0.9rem;
+    }
+
+    #toggleSettings { left: 16px; bottom: 16px; }
+    #toggleControls { right: 16px; bottom: 16px; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <div id="settingsPanel" class="panel">
+    <h3>✨ Settings</h3>
+    <p class="tiny">Childish playful style controls.</p>
+    <div class="row"><label>Animation Speed</label><input id="speed" type="range" min="0.2" max="3" step="0.1" value="1"></div>
+    <div class="row"><label>Fade Out Time (sec)</label><input id="fadeTime" type="range" min="0.1" max="4" step="0.1" value="1.4"></div>
+    <div class="row"><label>Window Color</label><input id="lightColor" type="color" value="#ffd95e"></div>
+    <div class="row"><label>Sparkle Windows Count</label><input id="sparkleWindowCount" type="number" min="1" max="240" value="65"></div>
+    <div class="row"><label>Sparkle Amount</label><input id="sparkleAmount" type="number" min="1" max="30" value="8"></div>
+    <div class="row"><label>Auto Sparkle</label><input id="autoSparkle" type="checkbox" checked></div>
+  </div>
+
+  <div id="controlsPanel" class="panel">
+    <h3>🎮 Controls</h3>
+    <button data-action="wipeLeft">One Hit Wipe Left</button>
+    <button data-action="wipeRight">One Hit Wipe Right</button>
+    <button data-action="wipeUp">One Hit Wipe Up</button>
+    <button data-action="wipeDown">One Hit Wipe Down</button>
+    <button data-action="flashFade">Flash Fade Out All</button>
+    <button data-action="randomFlash">Random Window Flash Fade</button>
+    <button data-action="rippleIn">Ripple In</button>
+    <button data-action="rippleOut">Ripple Out</button>
+    <p class="tiny">Orbit drag enabled. Touch supports pinch (2 finger zoom).</p>
+  </div>
+
+  <button id="toggleSettings" class="toggleBtn">Open / Close Settings</button>
+  <button id="toggleControls" class="toggleBtn">Open / Close Controls</button>
+
+  <script type="module">
+    import * as THREE from 'https://unpkg.com/three@0.163.0/build/three.module.js';
+    import { OrbitControls } from 'https://unpkg.com/three@0.163.0/examples/jsm/controls/OrbitControls.js';
+
+    const app = document.getElementById('app');
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    app.appendChild(renderer.domElement);
+
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.Fog(0x0c1330, 45, 140);
+
+    const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 260);
+    camera.position.set(23, 20, 27);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.enablePan = false;
+    controls.maxPolarAngle = Math.PI * 0.49;
+    controls.minDistance = 10;
+    controls.maxDistance = 90;
+    controls.touches.TWO = THREE.TOUCH.DOLLY_PAN;
+
+    scene.add(new THREE.AmbientLight(0x6f84c8, 0.55));
+    const moon = new THREE.DirectionalLight(0xadc4ff, 1.2);
+    moon.position.set(12, 30, 22);
+    scene.add(moon);
+
+    const ground = new THREE.Mesh(
+      new THREE.PlaneGeometry(180, 180),
+      new THREE.MeshStandardMaterial({ color: 0x101a3b, roughness: 0.95, metalness: 0.1 })
+    );
+    ground.rotation.x = -Math.PI / 2;
+    scene.add(ground);
+
+    const parking = new THREE.Mesh(
+      new THREE.PlaneGeometry(56, 30),
+      new THREE.MeshStandardMaterial({ color: 0x232c52, roughness: 0.9 })
+    );
+    parking.rotation.x = -Math.PI / 2;
+    parking.position.set(0, 0.01, 21);
+    scene.add(parking);
+
+    const stripeMat = new THREE.MeshBasicMaterial({ color: 0xdde5ff });
+    for (let i = -11; i <= 11; i += 2.2) {
+      const s = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.25), stripeMat);
+      s.rotation.x = -Math.PI / 2;
+      s.position.set(i, 0.03, 20.6);
+      scene.add(s);
+    }
+
+    const building = new THREE.Group();
+    scene.add(building);
+
+    const core = new THREE.Mesh(
+      new THREE.BoxGeometry(24, 30, 16),
+      new THREE.MeshStandardMaterial({ color: 0x6b7298, roughness: 0.58, metalness: 0.14 })
+    );
+    core.position.y = 15;
+    building.add(core);
+
+    const door = new THREE.Mesh(
+      new THREE.BoxGeometry(4, 6, 0.3),
+      new THREE.MeshStandardMaterial({ color: 0x11172c, emissive: 0x122233, emissiveIntensity: 0.3 })
+    );
+    door.position.set(0, 3, 8.18);
+    building.add(door);
+
+    const windowGeo = new THREE.PlaneGeometry(1.3, 1.5);
+    const windows = [];
+    const sparkles = [];
+    const impacts = [];
+
+    let settings = {
+      speed: 1,
+      fadeTime: 1.4,
+      lightColor: '#ffd95e',
+      sparkleWindowCount: 65,
+      sparkleAmount: 8,
+      autoSparkle: true
+    };
+
+    function addWindowsForFace(z, facing) {
+      for (let y = 3.2; y <= 27; y += 2.2) {
+        for (let x = -10; x <= 10; x += 2.3) {
+          if (Math.abs(x) < 2 && y < 8) continue;
+          const mat = new THREE.MeshStandardMaterial({
+            color: 0x232744,
+            emissive: new THREE.Color(settings.lightColor),
+            emissiveIntensity: 0,
+            roughness: 0.3,
+            metalness: 0.2
+          });
+          const w = new THREE.Mesh(windowGeo, mat);
+          w.position.set(x, y, z);
+          if (facing === 'back') w.rotation.y = Math.PI;
+          building.add(w);
+          windows.push({ mesh: w, x, y, z: Math.abs(z), flash: 0, delay: 0 });
+        }
+      }
+    }
+
+    addWindowsForFace(8.08, 'front');
+    addWindowsForFace(-8.08, 'back');
+
+    function triggerWindow(win, strength = 1) {
+      win.flash = Math.max(win.flash, strength);
+      impacts.push({ pos: new THREE.Vector3(win.x, 0.15, Math.sign(win.mesh.position.z) * 8.2), life: 0.8, max: 0.8 });
+    }
+
+    function wipe(dir) {
+      const minX = -10, maxX = 10, minY = 3, maxY = 27;
+      for (const w of windows) {
+        let n = 0;
+        if (dir === 'left') n = (w.x - minX) / (maxX - minX);
+        if (dir === 'right') n = (maxX - w.x) / (maxX - minX);
+        if (dir === 'up') n = (w.y - minY) / (maxY - minY);
+        if (dir === 'down') n = (maxY - w.y) / (maxY - minY);
+        w.delay = n * 0.55 / settings.speed;
+      }
+    }
+
+    function flashFadeAll() {
+      windows.forEach(w => triggerWindow(w, 1));
+    }
+
+    function randomFlash() {
+      const count = Math.max(1, Math.floor(windows.length * 0.2));
+      for (let i = 0; i < count; i++) {
+        const w = windows[Math.floor(Math.random() * windows.length)];
+        triggerWindow(w, 1 + Math.random() * 0.7);
+      }
+    }
+
+    function ripple(mode = 'out') {
+      const centerY = 15;
+      for (const w of windows) {
+        const d = Math.hypot(w.x, w.y - centerY);
+        const t = d * 0.028 / settings.speed;
+        w.delay = mode === 'out' ? t : (1.2 - t);
+      }
+    }
+
+    function makeSparkleFor(win) {
+      const m = new THREE.Mesh(
+        new THREE.SphereGeometry(0.045 + Math.random() * 0.06, 6, 6),
+        new THREE.MeshBasicMaterial({ color: settings.lightColor })
+      );
+      const p = win.mesh.position.clone();
+      p.x += (Math.random() - 0.5) * 1.1;
+      p.y += (Math.random() - 0.5) * 1.2;
+      p.z += Math.sign(p.z) * 0.2;
+      m.position.copy(p);
+      scene.add(m);
+      sparkles.push({ mesh: m, life: 0.7 + Math.random() * 0.6 });
+    }
+
+    function sprinkleSparkles() {
+      const chosen = [];
+      for (let i = 0; i < settings.sparkleWindowCount; i++) {
+        chosen.push(windows[Math.floor(Math.random() * windows.length)]);
+      }
+      for (const win of chosen) {
+        for (let i = 0; i < settings.sparkleAmount; i++) makeSparkleFor(win);
+      }
+    }
+
+    function bindUI() {
+      const byId = id => document.getElementById(id);
+      byId('speed').oninput = e => settings.speed = parseFloat(e.target.value);
+      byId('fadeTime').oninput = e => settings.fadeTime = parseFloat(e.target.value);
+      byId('lightColor').oninput = e => {
+        settings.lightColor = e.target.value;
+        windows.forEach(w => w.mesh.material.emissive.set(settings.lightColor));
+      };
+      byId('sparkleWindowCount').oninput = e => settings.sparkleWindowCount = Math.max(1, parseInt(e.target.value || '1', 10));
+      byId('sparkleAmount').oninput = e => settings.sparkleAmount = Math.max(1, parseInt(e.target.value || '1', 10));
+      byId('autoSparkle').onchange = e => settings.autoSparkle = e.target.checked;
+
+      document.querySelectorAll('[data-action]').forEach(btn => btn.onclick = () => {
+        const a = btn.dataset.action;
+        if (a === 'wipeLeft') wipe('left');
+        if (a === 'wipeRight') wipe('right');
+        if (a === 'wipeUp') wipe('up');
+        if (a === 'wipeDown') wipe('down');
+        if (a === 'flashFade') flashFadeAll();
+        if (a === 'randomFlash') randomFlash();
+        if (a === 'rippleIn') ripple('in');
+        if (a === 'rippleOut') ripple('out');
+      });
+
+      byId('toggleSettings').onclick = () => byId('settingsPanel').classList.toggle('closed');
+      byId('toggleControls').onclick = () => byId('controlsPanel').classList.toggle('closed');
+    }
+
+    bindUI();
+    wipe('left');
+
+    const clock = new THREE.Clock();
+    let sparkleTicker = 0;
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const dt = clock.getDelta();
+      const fadeFactor = dt / Math.max(0.12, settings.fadeTime / settings.speed);
+
+      for (const w of windows) {
+        if (w.delay > 0) {
+          w.delay -= dt;
+          if (w.delay <= 0) triggerWindow(w, 1 + Math.random() * 0.3);
+        }
+        if (w.flash > 0) {
+          w.flash = Math.max(0, w.flash - fadeFactor);
+          w.mesh.material.emissiveIntensity = Math.min(2.5, Math.pow(w.flash, 0.62) * 2.4);
+        } else {
+          w.mesh.material.emissiveIntensity = 0;
+        }
+      }
+
+      for (let i = impacts.length - 1; i >= 0; i--) {
+        const hit = impacts[i];
+        hit.life -= dt;
+        if (hit.life <= 0) {
+          impacts.splice(i, 1);
+          continue;
+        }
+        const pulse = (hit.life / hit.max);
+        ground.material.color.setRGB(0.07 + 0.25 * pulse, 0.11 + 0.18 * pulse, 0.24 + 0.45 * pulse);
+      }
+
+      sparkleTicker += dt;
+      if (settings.autoSparkle && sparkleTicker > 1.1 / settings.speed) {
+        sparkleTicker = 0;
+        sprinkleSparkles();
+      }
+
+      for (let i = sparkles.length - 1; i >= 0; i--) {
+        const s = sparkles[i];
+        s.life -= dt;
+        s.mesh.scale.multiplyScalar(1 + dt * 2.6);
+        s.mesh.material.opacity = Math.max(0, s.life);
+        s.mesh.material.transparent = true;
+        if (s.life <= 0) {
+          scene.remove(s.mesh);
+          s.mesh.geometry.dispose();
+          s.mesh.material.dispose();
+          sparkles.splice(i, 1);
+        }
+      }
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    animate();
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
